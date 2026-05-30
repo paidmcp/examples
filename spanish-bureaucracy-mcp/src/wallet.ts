@@ -5,7 +5,7 @@ let cachedAccount: Awaited<ReturnType<WalletManagerEvm["getAccount"]>> | null = 
 
 async function getAccount() {
   if (!cachedAccount) {
-    cachedAccount = await new WalletManagerEvm(config.SEED_PHRASE, { provider: config.RPC_URL }).getAccount();
+    cachedAccount = await new WalletManagerEvm(config.SEED_PHRASE, { provider: config.BASE_RPC_URL }).getAccount();
   }
   return cachedAccount;
 }

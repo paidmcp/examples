@@ -20,11 +20,21 @@ db.exec(`
 
 export function logCall(entry: {
   toolName: string;
+  payerAddress?: string;
   amountUsdt?: number;
+  txHash?: string;
   success: boolean;
   errorMessage?: string;
 }): void {
   db.prepare(
-    `INSERT INTO calls (tool_name, amount_usdt, timestamp, success, error_message) VALUES (?, ?, ?, ?, ?)`
-  ).run(entry.toolName, entry.amountUsdt ?? null, Date.now(), entry.success ? 1 : 0, entry.errorMessage ?? null);
+    `INSERT INTO calls (tool_name, payer_address, amount_usdt, tx_hash, timestamp, success, error_message) VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    entry.toolName,
+    entry.payerAddress ?? null,
+    entry.amountUsdt ?? null,
+    entry.txHash ?? null,
+    Date.now(),
+    entry.success ? 1 : 0,
+    entry.errorMessage ?? null
+  );
 }

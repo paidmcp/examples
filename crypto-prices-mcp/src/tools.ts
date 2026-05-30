@@ -12,12 +12,27 @@ export function definePaidTool<TInput, TOutput>(tool: PaidTool<TInput, TOutput>)
   return tool;
 }
 
+const coingeckoIdSchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z0-9-]+$/, "Use a lowercase CoinGecko ID like bitcoin, ethereum, tether");
+
+const CACHE_TTL = 60_000;
+const cache = new Map<string, { data: unknown; ts: number }>();
+
 async function json<T>(url: string): Promise<T> {
+  const hit = cache.get(url);
+  if (hit && Date.now() - hit.ts < CACHE_TTL) {
+    return hit.data as T;
+  }
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Upstream API error ${response.status}`);
   }
-  return (await response.json()) as T;
+  const data = (await response.json()) as T;
+  cache.set(url, { data, ts: Date.now() });
+  return data;
 }
 
 export const tools: Array<PaidTool<any, any>> = [
@@ -26,7 +41,7 @@ export const tools: Array<PaidTool<any, any>> = [
     description: "Get current USD price and 24h change for a token by CoinGecko ID.",
     priceUsdt: 0.001,
     inputSchema: z.object({
-      id: z.string().describe("CoinGecko ID like bitcoin, ethereum, tether")
+      id: coingeckoIdSchema.describe("CoinGecko ID like bitcoin, ethereum, tether")
     }),
     handler: async ({ id }) => {
       const data = await json<Record<string, { usd?: number; usd_24h_change?: number }>>(
@@ -44,7 +59,7 @@ export const tools: Array<PaidTool<any, any>> = [
     description: "Get historical USD price points for a token.",
     priceUsdt: 0.002,
     inputSchema: z.object({
-      id: z.string(),
+      id: coingeckoIdSchema,
       days: z.number().int().min(1).max(365)
     }),
     handler: async ({ id, days }) => {
@@ -59,7 +74,7 @@ export const tools: Array<PaidTool<any, any>> = [
     description: "Get market cap, volume, and rank for a token.",
     priceUsdt: 0.001,
     inputSchema: z.object({
-      id: z.string()
+      id: coingeckoIdSchema
     }),
     handler: async ({ id }) => {
       const data = await json<{
