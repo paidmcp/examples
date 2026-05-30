@@ -27,12 +27,12 @@ For LLM examples, set `ANTHROPIC_API_KEY` in `.env` first.
 
 Run inside each example directory after `npm install`.
 
-| Command | Role | What it does |
-|---------|------|--------------|
+| Command                 | Role            | What it does                                            |
+| ----------------------- | --------------- | ------------------------------------------------------- |
 | `npm run wallet:create` | Server receiver | Prints a seed phrase to store in that example's `.env`. |
-| `npm run wallet:info` | Server receiver | Shows receiver address and token balances. |
-| `npm run calls:recent` | Server operator | Shows recent paid calls from SQLite. |
-| `npm run dev` | Server operator | Starts local server for that example. |
+| `npm run wallet:info`   | Server receiver | Shows receiver address and token balances.              |
+| `npm run calls:recent`  | Server operator | Shows recent paid calls from SQLite.                    |
+| `npm run dev`           | Server operator | Starts local server for that example.                   |
 
 ## Two-wallet model
 
@@ -40,3 +40,7 @@ Run inside each example directory after `npm install`.
 - **Payer wallet (client app):** generated in `client/` with `npm run init`.
 
 See [REAL_PAYMENT_TEST_PATH.md](../REAL_PAYMENT_TEST_PATH.md) for an end-to-end local payment runbook.
+
+## License
+
+MIT. See `LICENSE`.
