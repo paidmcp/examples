@@ -8,16 +8,17 @@ Three flagship paid MCP servers built as independent deployable projects.
 - `persian-translation-mcp` - Persian translation and idiom tools (Claude Haiku)
 - `spanish-bureaucracy-mcp` - Spanish tax/bureaucracy assistant tools (Claude Sonnet)
 
-Each directory is a standalone TypeScript project with its own `package.json`, `.env.example`, wallet scripts, and paid x402 routes.
+Each directory is a standalone native MCP + x402 server with:
+- Streamable HTTP MCP endpoint at `/mcp`
+- testnet-first defaults (`NETWORK_MODE=test`)
+- free-trial calls before paid settlement
 
 ## Run any example
 
 ```bash
 cd <example-name>
 npm install
-cp .env.example .env
-npm run wallet:create
-# paste seed into .env as SEED_PHRASE
+npm run setup
 npm run dev
 ```
 
@@ -27,17 +28,23 @@ For LLM examples, set `ANTHROPIC_API_KEY` in `.env` first.
 
 Run inside each example directory after `npm install`.
 
-| Command                 | Role            | What it does                                            |
-| ----------------------- | --------------- | ------------------------------------------------------- |
-| `npm run wallet:create` | Server receiver | Prints a seed phrase to store in that example's `.env`. |
-| `npm run wallet:info`   | Server receiver | Shows receiver address and token balances.              |
-| `npm run calls:recent`  | Server operator | Shows recent paid calls from SQLite.                    |
-| `npm run dev`           | Server operator | Starts local server for that example.                   |
+| Command | What it does |
+| --- | --- |
+| `npm run setup` | generates receiver wallet and testnet-ready `.env` |
+| `npm run wallet:create` | prints a replacement seed phrase |
+| `npm run wallet:info` | shows receiver address and balances |
+| `npm run calls:recent` | shows recent paid/trial calls from SQLite |
+| `npm run dev` | starts native MCP server (`/mcp`) |
 
 ## Two-wallet model
 
-- **Receiver wallet (example server):** generated with `npm run wallet:create` in each example.
-- **Payer wallet (client app):** generated in `client/` with `npm run init`.
+- **Receiver wallet (example server):** stored in each example `.env` as `SEED_PHRASE`.
+- **Payer wallet (managed client mode):** generated in `client/` with `npm run init`.
+
+## Connect snippets
+
+- Native MCP mode: connect to `https://<your-host>/mcp`
+- Managed wallet mode: `npx paidmcp-client run https://<your-host>`
 
 See [REAL_PAYMENT_TEST_PATH.md](../REAL_PAYMENT_TEST_PATH.md) for an end-to-end local payment runbook.
 

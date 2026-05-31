@@ -14,9 +14,7 @@ Run inside `examples/crypto-prices-mcp/`:
 
 ```bash
 npm install
-cp .env.example .env
-npm run wallet:create
-# paste seed into .env as SEED_PHRASE
+npm run setup
 npm run dev
 ```
 
@@ -24,17 +22,18 @@ npm run dev
 
 Run inside `examples/crypto-prices-mcp/` after `npm install`.
 
-| Command | Role | What it does |
-|---------|------|--------------|
-| `npm run wallet:create` | Server receiver | Prints a new seed phrase. Paste it into `.env` as `SEED_PHRASE`. |
-| `npm run wallet:info` | Server receiver | Shows receiver address plus Base USDC and Plasma USDT0 balances. |
-| `npm run calls:recent` | Server operator | Shows the latest paid calls from SQLite. |
-| `npm run dev` | Server operator | Starts the server locally. |
-| `npm run build && npm start` | Server operator | Runs compiled server code. |
+| Command                      | Role            | What it does                                                           |
+| ---------------------------- | --------------- | ---------------------------------------------------------------------- |
+| `npm run setup`              | Server operator | Creates `.env` with generated `SEED_PHRASE` and testnet mode defaults. |
+| `npm run wallet:create`      | Server receiver | Prints a replacement seed phrase.                                      |
+| `npm run wallet:info`        | Server receiver | Shows receiver address plus Base USDC and Plasma USDT0 balances.       |
+| `npm run calls:recent`       | Server operator | Shows the latest paid calls from SQLite.                               |
+| `npm run dev`                | Server operator | Starts the server locally.                                             |
+| `npm run build && npm start` | Server operator | Runs compiled server code.                                             |
 
 ## Two wallets to keep separate
 
-- **Receiver wallet (server):** created by `npm run wallet:create`, stored in this project's `.env` (`SEED_PHRASE`).
+- **Receiver wallet (server):** created by `npm run setup` or `npm run wallet:create`, stored in this project's `.env` (`SEED_PHRASE`).
 - **Payer wallet (client):** created in `client/` with `npm run init`, stored in `~/.paidmcp/config.json`.
 
 Fund the payer wallet to test paid calls. Do not fund the receiver wallet manually for normal flow.
@@ -48,5 +47,10 @@ Fund the payer wallet to test paid calls. Do not fund the receiver wallet manual
 
 ## Endpoints
 
-- Paid HTTP tools: `POST /tools/<tool-name>`
-- Tool discovery for proxy: `GET /mcp/tools`
+- Native MCP endpoint: `/mcp`
+- Discovery endpoint: `/mcp/tools`
+
+## Connect
+
+- Native mode: add `http://localhost:4021/mcp` to your MCP client
+- Managed wallet mode: `npx paidmcp-client run http://localhost:4021`

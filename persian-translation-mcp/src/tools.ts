@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import { z } from "zod";
 import { config } from "./config.js";
 
-const systemPrompt = readFileSync(new URL("./prompts/persian.md", import.meta.url), "utf-8");
+const systemPrompt = readFileSync(
+  new URL("./prompts/persian.md", import.meta.url),
+  "utf-8",
+);
 const anthropic = new Anthropic({ apiKey: config.ANTHROPIC_API_KEY });
 
 export interface PaidTool<TInput = unknown, TOutput = unknown> {
@@ -14,7 +17,9 @@ export interface PaidTool<TInput = unknown, TOutput = unknown> {
   handler: (input: TInput) => Promise<TOutput>;
 }
 
-export function definePaidTool<TInput, TOutput>(tool: PaidTool<TInput, TOutput>): PaidTool<TInput, TOutput> {
+export function definePaidTool<TInput, TOutput>(
+  tool: PaidTool<TInput, TOutput>,
+): PaidTool<TInput, TOutput> {
   return tool;
 }
 
@@ -23,7 +28,7 @@ async function askClaude(prompt: string): Promise<unknown> {
     model: "claude-haiku-4-5-20251001",
     max_tokens: 900,
     system: systemPrompt,
-    messages: [{ role: "user", content: prompt }]
+    messages: [{ role: "user", content: prompt }],
   });
   const text = response.content.find((block) => block.type === "text");
   if (!text || text.type !== "text") {
@@ -43,33 +48,36 @@ export const tools: Array<PaidTool<any, any>> = [
     priceUsdt: 0.005,
     inputSchema: z.object({
       text: z.string(),
-      formality: z.enum(["formal", "casual"]).default("formal")
+      formality: z.enum(["formal", "casual"]).default("formal"),
     }),
     handler: async ({ text, formality }) =>
       askClaude(
-        `Translate to ${formality} Persian. Return JSON with fields: translation, notes (optional).\n\nText:\n${text}`
-      )
+        `Translate to ${formality} Persian. Return JSON with fields: translation, notes (optional).\n\nText:\n${text}`,
+      ),
   }),
   definePaidTool({
     name: "translate_from_persian",
-    description: "Translate Persian/Farsi text to English while preserving nuance.",
+    description:
+      "Translate Persian/Farsi text to English while preserving nuance.",
     priceUsdt: 0.005,
     inputSchema: z.object({
-      text: z.string()
+      text: z.string(),
     }),
     handler: async ({ text }) =>
-      askClaude(`Translate this Persian text to English. Return JSON with fields: translation, notes.\n\nText:\n${text}`)
+      askClaude(
+        `Translate this Persian text to English. Return JSON with fields: translation, notes.\n\nText:\n${text}`,
+      ),
   }),
   definePaidTool({
     name: "explain_persian_idiom",
     description: "Explain Persian idioms with literal and cultural meaning.",
     priceUsdt: 0.005,
     inputSchema: z.object({
-      phrase: z.string()
+      phrase: z.string(),
     }),
     handler: async ({ phrase }) =>
       askClaude(
-        `Explain this Persian idiom. Return JSON with fields: literal, meaning, english_equivalent, usage_example.\n\nPhrase:\n${phrase}`
-      )
-  })
+        `Explain this Persian idiom. Return JSON with fields: literal, meaning, english_equivalent, usage_example.\n\nPhrase:\n${phrase}`,
+      ),
+  }),
 ];

@@ -21,29 +21,49 @@ function atomic(priceUsdt: number): string {
  */
 function acceptsFor(tool: PaidTool, payTo: string): Accepts {
   const amount = atomic(tool.priceUsdt);
-  return [
-    {
+  const accepts: Accepts = [];
+  if (config.BASE_FACILITATOR_URL) {
+    accepts.push({
       scheme: "exact",
       network: BASE_NETWORK,
       payTo,
-      price: { asset: config.USDC_ADDRESS, amount, extra: { name: "USD Coin", version: "2", decimals: 6 } }
-    },
-    {
+      price: {
+        asset: config.USDC_ADDRESS,
+        amount,
+        extra: { name: "USD Coin", version: "2", decimals: 6 },
+      },
+    });
+  }
+  if (config.PLASMA_FACILITATOR_URL) {
+    accepts.push({
       scheme: "exact",
       network: PLASMA_NETWORK,
       payTo,
-      price: { asset: config.USDT0_ADDRESS, amount, extra: { name: "USDT0", version: "1", decimals: 6 } }
-    }
-  ];
+      price: {
+        asset: config.USDT0_ADDRESS,
+        amount,
+        extra: { name: "USDT0", version: "1", decimals: 6 },
+      },
+    });
+  }
+  if (accepts.length === 0) {
+    throw new Error(
+      "No facilitator enabled. Set BASE_FACILITATOR_URL or PLASMA_FACILITATOR_URL.",
+    );
+  }
+  return accepts;
 }
 
-export function buildRoutes(tools: PaidTool[], payTo: string): Record<string, RouteConfig> {
+export function buildRoutes(
+  tools: PaidTool[],
+  payTo: string,
+): Record<string, RouteConfig> {
   const routes: Record<string, RouteConfig> = {};
   for (const tool of tools) {
     routes[`POST /tools/${tool.name}`] = {
       accepts: acceptsFor(tool, payTo),
       description: tool.description,
-      mimeType: "application/json"
+      mimeType: "application/json",
     };
   }
   return routes;
@@ -53,7 +73,9 @@ function toolNameFromContext(ctx: {
   transportContext?: unknown;
   paymentPayload?: { resource?: { url?: string } };
 }): string {
-  const tc = ctx.transportContext as { request?: { path?: string }; path?: string } | undefined;
+  const tc = ctx.transportContext as
+    | { request?: { path?: string }; path?: string }
+    | undefined;
   const path = tc?.request?.path ?? tc?.path;
   if (path?.startsWith("/tools/")) return path.slice("/tools/".length);
 
@@ -61,7 +83,8 @@ function toolNameFromContext(ctx: {
   if (url) {
     try {
       const pathname = new URL(url).pathname;
-      if (pathname.startsWith("/tools/")) return pathname.slice("/tools/".length);
+      if (pathname.startsWith("/tools/"))
+        return pathname.slice("/tools/".length);
     } catch {
       // ignore malformed resource url
     }
@@ -71,52 +94,52 @@ function toolNameFromContext(ctx: {
 
 /**
  * One resource server, both facilitators. The server routes each network to the
- * facilitator that advertises support for it (CDP or Heurist -> Base, Semantic -> Plasma).
+ * facilitator that advertises support for it.
  * Successful settlements are logged here so the SQLite row carries the tx hash and payer.
  */
-function buildBaseFacilitatorClient(): HTTPFacilitatorClient {
-  const baseUrl = config.BASE_FACILITATOR_URL ?? config.HEURIST_FACILITATOR_URL;
-  if (!baseUrl) {
-    throw new Error("Base facilitator disabled. Set BASE_FACILITATOR_URL to enable Base payments.");
-  }
-  if (baseUrl.includes("api.cdp.coinbase.com")) {
-    if (!config.CDP_API_KEY_ID || !config.CDP_API_KEY_SECRET) {
-      throw new Error("CDP_API_KEY_ID and CDP_API_KEY_SECRET are required for Coinbase facilitator.");
+export function buildResourceServer(tools: PaidTool[]): x402ResourceServer {
+  const facilitators: HTTPFacilitatorClient[] = [];
+  if (config.BASE_FACILITATOR_URL) {
+    if (config.BASE_FACILITATOR_URL.includes("api.cdp.coinbase.com")) {
+      if (!config.CDP_API_KEY_ID || !config.CDP_API_KEY_SECRET) {
+        throw new Error(
+          "CDP_API_KEY_ID and CDP_API_KEY_SECRET are required for Coinbase facilitator.",
+        );
+      }
+      facilitators.push(
+        new HTTPFacilitatorClient(
+          createFacilitatorConfig(
+            config.CDP_API_KEY_ID,
+            config.CDP_API_KEY_SECRET,
+          ),
+        ),
+      );
+    } else {
+      facilitators.push(
+        new HTTPFacilitatorClient({ url: config.BASE_FACILITATOR_URL }),
+      );
     }
-    return new HTTPFacilitatorClient(
-      createFacilitatorConfig(config.CDP_API_KEY_ID, config.CDP_API_KEY_SECRET)
+  }
+  if (config.PLASMA_FACILITATOR_URL) {
+    facilitators.push(
+      new HTTPFacilitatorClient({ url: config.PLASMA_FACILITATOR_URL }),
     );
   }
-  return new HTTPFacilitatorClient({ url: baseUrl });
-}
-
-function facilitatorForNetwork(network: string): string {
-  const baseUrl = config.BASE_FACILITATOR_URL ?? config.HEURIST_FACILITATOR_URL;
-  const plasmaUrl = config.PLASMA_FACILITATOR_URL ?? config.SEMANTIC_FACILITATOR_URL;
-  if (network === BASE_NETWORK) {
-    if (!baseUrl) return "disabled";
-    return baseUrl.includes("api.cdp.coinbase.com") ? "cdp" : baseUrl;
-  }
-  if (network === PLASMA_NETWORK) {
-    return plasmaUrl ? (plasmaUrl.includes("semanticpay.io") ? "semantic" : plasmaUrl) : "disabled";
-  }
-  return "unknown";
-}
-
-export function buildResourceServer(tools: PaidTool[]): x402ResourceServer {
-  const base = config.BASE_FACILITATOR_URL || config.HEURIST_FACILITATOR_URL ? buildBaseFacilitatorClient() : null;
-  const plasmaUrl = config.PLASMA_FACILITATOR_URL ?? config.SEMANTIC_FACILITATOR_URL;
-  const semantic = plasmaUrl ? new HTTPFacilitatorClient({ url: plasmaUrl }) : null;
-  const facilitators = [base, semantic].filter(Boolean) as HTTPFacilitatorClient[];
   if (facilitators.length === 0) {
-    throw new Error("No facilitator enabled. Set BASE_FACILITATOR_URL or PLASMA_FACILITATOR_URL.");
+    throw new Error(
+      "No facilitator enabled. Set BASE_FACILITATOR_URL or PLASMA_FACILITATOR_URL.",
+    );
   }
 
   const priceByTool = new Map(tools.map((t) => [t.name, t.priceUsdt]));
 
   const server = new x402ResourceServer(facilitators);
-  if (base) server.register(BASE_NETWORK, new ExactEvmScheme());
-  if (semantic) server.register(PLASMA_NETWORK, new ExactEvmScheme());
+  if (config.BASE_FACILITATOR_URL) {
+    server.register(BASE_NETWORK, new ExactEvmScheme());
+  }
+  if (config.PLASMA_FACILITATOR_URL) {
+    server.register(PLASMA_NETWORK, new ExactEvmScheme());
+  }
 
   server.onAfterSettle(async (ctx) => {
     if (!ctx.result.success) return;
@@ -126,13 +149,10 @@ export function buildResourceServer(tools: PaidTool[]): x402ResourceServer {
       payerAddress: ctx.result.payer,
       amountUsdt: priceByTool.get(toolName),
       txHash: ctx.result.transaction,
-      network: ctx.requirements.network,
-      asset: ctx.requirements.asset,
-      facilitator: facilitatorForNetwork(ctx.requirements.network),
-      success: true
+      success: true,
     });
     console.log(
-      `[x402] settled ${toolName}: ${ctx.result.transaction} from ${ctx.result.payer}`
+      `[x402] settled ${toolName}: ${ctx.result.transaction} from ${ctx.result.payer}`,
     );
   });
 
@@ -140,7 +160,7 @@ export function buildResourceServer(tools: PaidTool[]): x402ResourceServer {
     const toolName = toolNameFromContext(ctx);
     console.error(
       `[x402] settlement failed${toolName ? ` for ${toolName}` : ""}:`,
-      ctx.error
+      ctx.error,
     );
   });
 
