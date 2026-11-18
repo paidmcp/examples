@@ -24,6 +24,7 @@ const coingeckoIdSchema = z
   );
 
 const CACHE_TTL = 60_000;
+const CACHE_MAX_ENTRIES = 500;
 const cache = new Map<string, { data: unknown; ts: number }>();
 
 async function json<T>(url: string): Promise<T> {
@@ -36,6 +37,11 @@ async function json<T>(url: string): Promise<T> {
     throw new Error(`Upstream API error ${response.status}`);
   }
   const data = (await response.json()) as T;
+  if (cache.size >= CACHE_MAX_ENTRIES) {
+    // Map keeps insertion order: drop the oldest entry.
+    const oldest = cache.keys().next().value;
+    if (oldest !== undefined) cache.delete(oldest);
+  }
   cache.set(url, { data, ts: Date.now() });
   return data;
 }

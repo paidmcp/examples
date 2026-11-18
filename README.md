@@ -11,9 +11,13 @@ Three flagship paid MCP servers built as independent deployable projects.
 Each directory is a standalone native MCP + x402 server with:
 - Streamable HTTP MCP endpoint at `/mcp`
 - testnet-first defaults (`NETWORK_MODE=test`)
-- free-trial calls before paid settlement
+- free-trial calls per client IP before payment (10 in test mode, 0 in live mode by default)
+
+They share the server code of [paidmcp/template](https://github.com/paidmcp/template); only `src/tools.ts`, the prompts and a few defaults (name, port, database path) differ.
 
 ## Run any example
+
+Requires Node.js 22 or newer.
 
 ```bash
 cd <example-name>
@@ -35,6 +39,8 @@ Run inside each example directory after `npm install`.
 | `npm run wallet:info` | shows receiver address and balances |
 | `npm run calls:recent` | shows recent paid/trial calls from SQLite |
 | `npm run dev` | starts native MCP server (`/mcp`) |
+| `npm test` | runs the payment-enforcement tests (no chain or network needed) |
+| `npm run check` | lint, typecheck, build and test |
 
 ## Two-wallet model
 
