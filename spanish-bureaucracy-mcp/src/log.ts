@@ -5,6 +5,7 @@ import { config } from "./config.js";
 
 mkdirSync(dirname(config.DB_PATH), { recursive: true });
 const db = new Database(config.DB_PATH);
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS calls (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,8 +57,12 @@ const countTrialCallsByPayer = db.prepare(`
   WHERE payer_address = ? AND success = 1 AND is_trial = 1
 `);
 
-export function logCall(entry: CallLogEntry): void {
-  insertCall.run(
+const markFailed = db.prepare(`
+  UPDATE calls SET success = 0, error_message = ? WHERE id = ?
+`);
+
+export function logCall(entry: CallLogEntry): number {
+  const info = insertCall.run(
     entry.toolName,
     entry.payerAddress ?? null,
     entry.amountUsdt ?? null,
@@ -67,9 +72,35 @@ export function logCall(entry: CallLogEntry): void {
     entry.errorMessage ?? null,
     entry.isTrial ? 1 : 0,
   );
+  return Number(info.lastInsertRowid);
 }
 
 export function getTrialCallsUsedByPayer(payerAddress: string): number {
   const row = countTrialCallsByPayer.get(payerAddress) as { count: number };
   return row.count ?? 0;
+}
+
+/**
+ * Atomically claims one free trial call for `payer`. The row is written as a
+ * success up front so concurrent requests cannot exceed the quota; call
+ * `refundTrialCall` if the tool then fails. Returns the row id, or null when
+ * the quota is used up.
+ */
+export const reserveTrialCall = db.transaction(
+  (payer: string, toolName: string, limit: number): number | null => {
+    if (limit <= 0) return null;
+    if (getTrialCallsUsedByPayer(payer) >= limit) return null;
+    return logCall({
+      toolName,
+      payerAddress: payer,
+      amountUsdt: 0,
+      success: true,
+      isTrial: true,
+    });
+  },
+);
+
+/** Marks a reserved trial call as failed, which gives the trial call back. */
+export function refundTrialCall(id: number, errorMessage: string): void {
+  markFailed.run(errorMessage, id);
 }

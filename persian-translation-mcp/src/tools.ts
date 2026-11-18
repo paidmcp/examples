@@ -47,7 +47,7 @@ export const tools: Array<PaidTool<any, any>> = [
     description: "Translate English to Persian/Farsi with formality control.",
     priceUsdt: 0.005,
     inputSchema: z.object({
-      text: z.string(),
+      text: z.string().max(4000),
       formality: z.enum(["formal", "casual"]).default("formal"),
     }),
     handler: async ({ text, formality }) =>
@@ -61,7 +61,7 @@ export const tools: Array<PaidTool<any, any>> = [
       "Translate Persian/Farsi text to English while preserving nuance.",
     priceUsdt: 0.005,
     inputSchema: z.object({
-      text: z.string(),
+      text: z.string().max(4000),
     }),
     handler: async ({ text }) =>
       askClaude(
@@ -73,7 +73,7 @@ export const tools: Array<PaidTool<any, any>> = [
     description: "Explain Persian idioms with literal and cultural meaning.",
     priceUsdt: 0.005,
     inputSchema: z.object({
-      phrase: z.string(),
+      phrase: z.string().max(300),
     }),
     handler: async ({ phrase }) =>
       askClaude(

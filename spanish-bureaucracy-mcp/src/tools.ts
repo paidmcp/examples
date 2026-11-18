@@ -51,7 +51,7 @@ export const tools: Array<PaidTool<any, any>> = [
     name: "interpret_aeat_letter",
     description: "Interpret an AEAT/Hacienda letter and propose next actions.",
     priceUsdt: 0.05,
-    inputSchema: z.object({ text: z.string() }),
+    inputSchema: z.object({ text: z.string().max(8000) }),
     handler: async ({ text }) =>
       askClaude(
         `Interpret this AEAT letter. Return JSON: { summary, urgency, required_actions: string[], deadlines: string[], risks: string[] }.\n\n${text}`,
@@ -63,7 +63,7 @@ export const tools: Array<PaidTool<any, any>> = [
       "Draft a professional Spanish response for a Hacienda situation.",
     priceUsdt: 0.05,
     inputSchema: z.object({
-      situation: z.string(),
+      situation: z.string().max(4000),
       tone: z.enum(["formal", "concise", "assertive"]).default("formal"),
     }),
     handler: async ({ situation, tone }) =>
@@ -75,7 +75,7 @@ export const tools: Array<PaidTool<any, any>> = [
     name: "find_cnae_code",
     description: "Suggest likely CNAE and IAE codes from business description.",
     priceUsdt: 0.02,
-    inputSchema: z.object({ business_description: z.string() }),
+    inputSchema: z.object({ business_description: z.string().max(1000) }),
     handler: async ({ business_description }) =>
       askClaude(
         `Suggest likely CNAE and IAE options. Return JSON: { primary_cnae, possible_cnae: string[], primary_iae, possible_iae: string[], notes }.\n\nDescription:\n${business_description}`,
